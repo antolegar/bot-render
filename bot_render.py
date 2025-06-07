@@ -41,7 +41,16 @@ def obtener_url_del_indicador():
 
         print("📊 Cargando gráfico...")
         pagina.goto("https://tradingdifferent.com/pools/binance-btcusdt")
-        pagina.wait_for_timeout(15000)  # 15 segundos
+
+        print("⏳ Esperando respuesta con la URL...")
+        try:
+            pagina.wait_for_response(
+                lambda response: "trendindicator.php" in response.url and "token=" in response.url,
+                timeout=40000
+            )
+            pagina.wait_for_timeout(5000)
+        except:
+            print("❌ No se detectó la URL en el tiempo esperado.")
 
         navegador.close()
         return url_objetivo
@@ -71,3 +80,4 @@ if __name__ == "__main__":
     if url:
         print("✅ URL capturada correctamente:", url)
     pegar_url_en_hoja(url)
+

@@ -14,6 +14,7 @@ CONTRASENA = "antolegar1997"
 
 def obtener_url_del_indicador():
     with sync_playwright() as p:
+        print("🟢 Lanzando navegador Playwright...")
         navegador = p.chromium.launch(headless=True)
         contexto = navegador.new_context()
         pagina = contexto.new_page()
@@ -29,16 +30,18 @@ def obtener_url_del_indicador():
 
         pagina.on("response", interceptar_respuesta)
 
-        # Iniciar sesión
+        print("🔐 Accediendo al login...")
         pagina.goto("https://tradingdifferent.com/login")
         pagina.fill('input[name="email"]', USUARIO)
         pagina.fill('input[name="password"]', CONTRASENA)
         pagina.click('button[type="submit"]')
-        pagina.wait_for_load_state("networkidle")
 
-        # Ir al gráfico
+        print("⏳ Esperando después del login...")
+        pagina.wait_for_timeout(10000)  # 10 segundos
+
+        print("📊 Cargando gráfico...")
         pagina.goto("https://tradingdifferent.com/pools/binance-btcusdt")
-        pagina.wait_for_timeout(6000)
+        pagina.wait_for_timeout(15000)  # 15 segundos
 
         navegador.close()
         return url_objetivo
@@ -49,8 +52,14 @@ def pegar_url_en_hoja(url):
         return
 
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    json_keyfile_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
-    creds = Credentials.from_service_account_info(json_keyfile_dict, scopes=scope)
+
+    if "RENDER" in os.environ:
+        print("🌐 Ejecutando en Render")
+        json_keyfile_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
+        creds = Credentials.from_service_account_info(json_keyfile_dict, scopes=scope)
+    else:
+        print("💻 Ejecutando en local")
+        creds = Credentials.from_service_account_file("credenciales.json", scopes=scope)
 
     client = gspread.authorize(creds)
     hoja = client.open_by_key(GOOGLE_SHEET_ID).worksheet(NOMBRE_HOJA)

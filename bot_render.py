@@ -3,6 +3,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import json
 import os
+import time
 
 # 🟢 CONFIGURACIÓN
 GOOGLE_SHEET_ID = "18V_MXVZRW31n1AJXLTnc3U775GVSI1LMTOMXoobtdsg"
@@ -13,38 +14,50 @@ USUARIO = "antonioolea84@gmail.com"
 CONTRASENA = "antolegar1997"
 
 def obtener_url_del_indicador():
-    with sync_playwright() as p:
-        print("🟢 Lanzando navegador Playwright...")
-        navegador = p.chromium.launch(headless=True)
-        contexto = navegador.new_context()
-        pagina = contexto.new_page()
+    for intento in range(3):
+        try:
+            with sync_playwright() as p:
+                print(f"🔁 Intento {intento + 1} de 3: lanzando navegador Playwright...")
+                navegador = p.chromium.launch(headless=True)
+                contexto = navegador.new_context()
+                pagina = contexto.new_page()
 
-        url_objetivo = None
+                url_objetivo = None
 
-        def interceptar_respuesta(response):
-            url = response.url
-            if "trendindicator.php" in url and "token=" in url:
-                nonlocal url_objetivo
-                url_objetivo = url
-                print("🔗 URL interceptada:", url)
+                def interceptar_respuesta(response):
+                    url = response.url
+                    if "trendindicator.php" in url and "token=" in url:
+                        nonlocal url_objetivo
+                        url_objetivo = url
+                        print("🔗 URL interceptada:", url)
 
-        pagina.on("response", interceptar_respuesta)
+                pagina.on("response", interceptar_respuesta)
 
-        print("🔐 Accediendo al login...")
-        pagina.goto("https://tradingdifferent.com/login")
-        pagina.fill('input[name="email"]', USUARIO)
-        pagina.fill('input[name="password"]', CONTRASENA)
-        pagina.click('button[type="submit"]')
+                print("🔐 Accediendo al login...")
+                pagina.goto("https://tradingdifferent.com/login", timeout=30000)
+                pagina.fill('input[name="email"]', USUARIO)
+                pagina.fill('input[name="password"]', CONTRASENA)
+                pagina.click('button[type="submit"]')
 
-        print("⏳ Esperando después del login (120s)...")
-        pagina.wait_for_timeout(120000)
+                print("⏳ Esperando después del login (120s)...")
+                pagina.wait_for_timeout(120000)
 
-        print("📊 Cargando gráfico...")
-        pagina.goto("https://tradingdifferent.com/pools/binance-btcusdt")
-        pagina.wait_for_timeout(120000)
+                print("📊 Cargando gráfico...")
+                pagina.goto("https://tradingdifferent.com/pools/binance-btcusdt", timeout=30000)
+                pagina.wait_for_timeout(120000)
 
-        navegador.close()
-        return url_objetivo
+                navegador.close()
+
+                if url_objetivo:
+                    return url_objetivo
+                else:
+                    print("⚠️ No se encontró la URL del token en este intento.")
+        except Exception as e:
+            print(f"❌ Error en el intento {intento + 1}: {e}")
+            time.sleep(5)
+
+    print("❌ No se pudo obtener la URL después de 3 intentos.")
+    return None
 
 def pegar_url_en_hoja(url):
     if not url or "token=" not in url:
@@ -71,3 +84,4 @@ if __name__ == "__main__":
     if url:
         print("✅ URL capturada correctamente:", url)
     pegar_url_en_hoja(url)
+
